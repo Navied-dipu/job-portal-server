@@ -13,7 +13,21 @@ const port =process.env.PORT || 5000
  app.use(express.json())
  app.use(cookieParser())
 
-
+const verifyToken =(req, res, next)=>{
+  // console.log('cooook', req.cookies)
+  const token=req?.cookies?.token
+  if(!token){
+    res.status(401).send({message:'Unauthorize access'})
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err,decoded)=>{
+    if(err){
+      res.status(401).send({message:"Unauthorize access"})
+    }
+    // 
+    req.user=decoded
+    next()
+  }) 
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2z2tafq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -37,11 +51,11 @@ async function run() {
     // auth related api
     app.post('/jwt', async(req, res)=>{
       const user=req.body;
-      const token=jwt.sign(user, process.env.JWT_SECRET, {expiresIn:'1h'})
+      const token=jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn:'1h'})
       res
       .cookie('token', token, {
         httpOnly:true,
-        secure:false,
+        secure:false, // for local host
       })
       .send({success:true})
 
@@ -72,9 +86,12 @@ async function run() {
 
     // job application apis 
 
-    app.get('/job-application', async(req, res )=>{
+    app.get('/job-application', verifyToken, async(req, res )=>{
       const eamil=req.query.email
       const query={applicante_email: eamil}
+      if(req.user.email !== req.query.email){
+        return res.status(403).send({message:'forbidden access'})
+      }
       console.log('cookies', req.cookies)
       const result= await jobApplicationCollection.find(query).toArray()
        for(const application of result ){

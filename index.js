@@ -55,10 +55,16 @@ async function run() {
       res
       .cookie('token', token, {
         httpOnly:true,
-        secure:false, // for local host
+        secure:false, // for localhost
       })
       .send({success:true})
-
+    })
+    app.post('/logout', (req, res)=>{
+      res.clearCookie('token',{
+        httpOnly:true,
+        secure:false
+      })
+      .send({success:"logout"})
     })
     // job related api
     app.get('/jobs', async(req, res)=>{
@@ -87,12 +93,14 @@ async function run() {
     // job application apis 
 
     app.get('/job-application', verifyToken, async(req, res )=>{
-      const eamil=req.query.email
-      const query={applicante_email: eamil}
-      if(req.user.email !== req.query.email){
+      const email=req.query.email
+      const query={applicante_email: email}
+
+      if(req.user.email !== email){
         return res.status(403).send({message:'forbidden access'})
       }
-      console.log('cookies', req.cookies)
+      
+      // console.log('cookies', req.cookies)
       const result= await jobApplicationCollection.find(query).toArray()
        for(const application of result ){
         // console.log(application.job_id)
